@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Activity {
+  id          String  @id @default(cuid())
+  name        String
+  category    String // 一人食/脱口秀/书店/桌游/羽毛球/徒步/探店/看展
+  tags        String // 逗号分隔，如 "室内,不喝酒,文艺"
+  lat         Float
+  lng         Float
+  address     String
+  costMin     Float // 元
+  costMax     Float
+  durationMin Int // 分钟
+  openTime    String // "18:00"
+  closeTime   String // "23:00"
+  rating      Float // 0-5
+  indoor      Boolean
+  alcoholFree Boolean
+  socialScore Int // 0-100，越高越适合找搭子
+  description String?
+  imageUrl    String?
+
+  plans     PlanItem[]
+  favorites Favorite[]
+  checkIns  CheckIn[]
+
+  @@map("activities")
+}
+
+model Plan {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  mode      String // solo | buddy
+  query     String // JSON：用户输入快照
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items     PlanItem[]
+
+  @@map("plans")
+}
+
+model PlanItem {
+  id            String   @id @default(cuid())
+  planId        String
+  plan          Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  activityId    String
+  activity      Activity @relation(fields: [activityId], references: [id])
+  order         Int
+  startTime     String // "18:30"
+  endTime       String // "20:00"
+  travelMinutes Int // 到达该点的移动耗时（首个为 0）
+
+  @@map("plan_items")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  phone        String    @unique
+  passwordHash String?
+  nickname     String?
+  sessions     Session[]
+  favorites    Favorite[]
+  checkIns     CheckIn[]
+  plans        Plan[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("sessions")
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, activityId])
+  @@map("favorites")
+}
+
+model CheckIn {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@map("check_ins")
+}
+
+model SmsCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@map("sms_codes")
+}
